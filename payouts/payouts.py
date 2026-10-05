@@ -133,7 +133,9 @@ class OwnerStatement:
 
     @property
     def slug(self) -> str:
-        return "".join(c if c.isalnum() else "-" for c in self.owner_name.lower()).strip("-")
+        """'Tom & Lisa Becker' -> 'tom-lisa-becker' (for URLs)."""
+        words = "".join(c if c.isalnum() else " " for c in self.owner_name.lower()).split()
+        return "-".join(words)
 
 
 @dataclass

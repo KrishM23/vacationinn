@@ -31,6 +31,7 @@ from .payouts import channel_fee, gross_rental
 AIRBNB_DATE_WINDOW_DAYS = 3        # how far off "~1 day after check-in" we'll accept
 VARIANCE_TOLERANCE = Decimal("1.00")
 MAX_COMBINED_PAYOUTS = 3
+CHANNEL_NAMES = {"airbnb": "Airbnb", "vrbo": "Vrbo", "direct": "Direct"}
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +147,7 @@ class Reconciler:
                 self.result.reservation_status[res.reservation_id] = "No deposit expected"
                 self.result.issues.append(Issue(
                     "info", "No deposit expected", res.reservation_id, ZERO,
-                    f"{res.status.title()} {res.channel} booking, refunded {money(res.refund_amount)} of "
+                    f"{res.status.title()} {CHANNEL_NAMES.get(res.channel, res.channel)} booking, refunded {money(res.refund_amount)} of "
                     f"{money(res.accommodation_total)} - nothing should land in the bank and nothing did."))
             else:
                 self.open_reservations.append(res)
@@ -323,9 +324,19 @@ class Reconciler:
                 and r.reservation.guest_surname.upper() in desc]
         if not hits:
             return ""
-        names = ", ".join(f"{h.reservation.reservation_id} ({h.reservation.guest_name})" for h in hits)
-        return (f" The name matches the guest surname on {names}, so it may be an off-platform payment "
-                f"from that guest (extra fee, damage, etc.) - though the first initial doesn't necessarily match.")
+        words = desc.split()
+        notes = []
+        for h in hits:
+            res = h.reservation
+            surname = res.guest_surname.upper()
+            idx = words.index(surname) if surname in words else -1
+            bank_initial = words[idx - 1][0] if idx > 0 else ""
+            guest_initial = res.guest_name[0].upper()
+            initial_note = "" if bank_initial in ("", guest_initial) else \
+                f", but the first initial differs ({bank_initial} vs {guest_initial})"
+            notes.append(f"{res.reservation_id} guest {res.guest_name}{initial_note}")
+        return (f" Surname matches {'; '.join(notes)}. Could be an off-platform payment from that guest "
+                f"or a family member (damage, extra fee, early check-in), or something unrelated.")
 
     def flag_leftover_reservations(self):
         last_bank_date = max((d.date for d in self.all_deposits), default=None)
