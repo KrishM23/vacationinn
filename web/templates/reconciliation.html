@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Reconciliation{% endblock %}
+{% block content %}
+<h1>Bank reconciliation · {{ report.period }}</h1>
+
+<section class="cards">
+  <div class="card"><div class="label">Deposits in feed</div><div class="value">{{ r.total_deposits|money }}</div>
+    <div class="sub">{{ report.deposits|length }} transactions</div></div>
+  <div class="card"><div class="label">Matched</div><div class="value good">{{ r.total_matched|money }}</div>
+    <div class="sub">{{ r.matches|map(attribute='deposits')|map('length')|sum }} transactions → {{ r.matches|map(attribute='reservations')|map('length')|sum }} reservations</div></div>
+  <div class="card"><div class="label">Unmatched in bank</div><div class="value {{ 'bad' if r.total_deposits != r.total_matched }}">{{ (r.total_deposits - r.total_matched)|money }}</div>
+    <div class="sub">duplicate / unidentified money</div></div>
+  <div class="card {{ 'warn' if r.action_items }}"><div class="label">Needs attention</div><div class="value">{{ r.action_items|length }}</div>
+    <div class="sub">{{ r.info_items|length }} more FYI notes</div></div>
+</section>
+
+<h2>Exceptions – needs attention</h2>
+{% if r.action_items %}
+<div class="issues">
+  {% for i in r.action_items %}
+  <div class="issue action">
+    <div class="issue-head"><span class="tag">{{ i.category }}</span><span class="ref">{{ i.reference }}</span><span class="amt">{{ i.amount|money }}</span></div>
+    <p>{{ i.reason }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="muted">Nothing – everything reconciles.</p>
+{% endif %}
+
+<h2>FYI</h2>
+<div class="issues">
+  {% for i in r.info_items %}
+  <div class="issue info">
+    <div class="issue-head"><span class="tag">{{ i.category }}</span><span class="ref">{{ i.reference }}</span><span class="amt">{{ i.amount|money }}</span></div>
+    <p>{{ i.reason }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<h2>Matched deposits</h2>
+<table>
+  <thead>
+    <tr><th>Date</th><th>Transaction</th><th>Description</th><th class="num">Deposited</th>
+        <th>Reservations</th><th class="num">Expected</th><th class="num">Diff</th><th>How matched</th></tr>
+  </thead>
+  <tbody>
+  {% for m in r.matches %}
+    <tr class="{{ 'variance' if m.difference }}">
+      <td>{% for d in m.deposits %}{{ d.date }}<br>{% endfor %}</td>
+      <td>{% for d in m.deposits %}{{ d.transaction_id }}<br>{% endfor %}</td>
+      <td class="small">{% for d in m.deposits %}{{ d.description }} <span class="muted">{{ d.amount|money }}</span><br>{% endfor %}</td>
+      <td class="num">{{ m.deposited_total|money }}</td>
+      <td>{% for res in m.reservations %}{{ res.reservation_id }} <span class="muted">{{ res.listing_name }}</span><br>{% endfor %}</td>
+      <td class="num">{{ m.expected_total|money }}</td>
+      <td class="num {{ 'bad-text' if m.difference }}">{% if m.difference %}{{ m.difference|money }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td><span class="chip plain">{{ m.kind }}</span><div class="muted small">{{ m.note }}</div></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

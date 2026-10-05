@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ s.owner_name }}{% endblock %}
+{% block content %}
+<div class="statement-head">
+  <div>
+    <div class="muted">Owner statement · {{ report.period }}</div>
+    <h1>{{ s.owner_name }}</h1>
+    <div class="muted">{{ s.owner_email }}</div>
+  </div>
+  <div class="totals-box">
+    <div><span>Earned</span><strong>{{ s.total_earned|money }}</strong></div>
+    {% if s.total_held %}<div class="warn-text"><span>Held (funds not received)</span><strong>-{{ s.total_held|money }}</strong></div>{% endif %}
+    <div class="big"><span>Payable now</span><strong>{{ s.total_payable|money }}</strong></div>
+    <button class="print" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+{% for listing in s.listings %}
+<section class="listing">
+  <h2>{{ listing.listing_name }} <span class="muted">{{ listing.listing_id }} · {{ listing.commission_pct|pct }} commission · cleaning fee to {{ listing.cleaning_fee_to }}</span></h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Reservation</th><th>Guest</th><th>Stay</th><th>Channel</th>
+        <th class="num">Accommodation</th><th class="num">Refund</th><th class="num">Channel fee</th>
+        <th class="num">Commission</th><th class="num">Cleaning</th><th class="num">Owner payout</th><th>Bank</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for l in listing.lines %}
+      {% set res = l.reservation %}
+      <tr class="{{ 'held' if not l.funds_received }} {{ 'cancelled' if res.status == 'cancelled' }}">
+        <td>{{ res.reservation_id }}<div class="muted">{{ res.channel_confirmation }}</div></td>
+        <td>{{ res.guest_name }}</td>
+        <td class="nowrap">{{ res.check_in.strftime('%b %d') }} – {{ res.check_out.strftime('%b %d') }}<div class="muted">{{ res.nights }} nights</div></td>
+        <td><span class="chip {{ res.channel }}">{{ res.channel|channel }}</span></td>
+        <td class="num">{{ res.accommodation_total|money }}</td>
+        <td class="num">{% if res.refund_amount %}-{{ res.refund_amount|money }}{% endif %}</td>
+        <td class="num">-{{ l.channel_fee|money }}</td>
+        <td class="num">-{{ l.commission|money }}</td>
+        <td class="num">{% if l.cleaning_to_owner %}+{{ l.cleaning_to_owner|money }}{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="num strong">{{ l.owner_payout|money }}</td>
+        <td>
+          {% set st = status.get(res.reservation_id, '') %}
+          <span class="status {{ 'ok' if st.startswith('Matched') else ('bad' if st == 'Missing' else 'neutral') }}" title="{{ st }}">
+            {{ 'Received' if st.startswith('Matched') else st }}
+          </span>
+          {% if l.note %}<div class="muted small">{{ l.note }}</div>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="9">{{ listing.listing_name }} total</td><td class="num">{{ listing.total|money }}</td><td></td></tr>
+    </tfoot>
+  </table>
+</section>
+{% endfor %}
+
+<details class="howto">
+  <summary>How each payout is calculated</summary>
+  <ol>
+    <li><b>Gross rental</b> = accommodation − refund</li>
+    <li><b>Channel fee</b> = Airbnb/Vrbo platform fee, or for direct bookings 2.9% + $0.30 of the total charged (accommodation + cleaning + taxes)</li>
+    <li><b>Commission</b> = commission % × (gross rental − channel fee), rounded to the cent</li>
+    <li><b>Cleaning</b> is added only if the agreement gives the cleaning fee to the owner</li>
+    <li>Taxes are never owner money</li>
+  </ol>
+</details>
+{% endblock %}

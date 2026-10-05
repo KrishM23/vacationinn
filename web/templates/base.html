@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}VacationInn{% endblock %} · {{ report.period }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="{{ url_for('overview', month=month_param) }}">VacationInn <span>Owner Payouts</span></a>
+      <nav>
+        <a href="{{ url_for('overview', month=month_param) }}" class="{{ 'active' if page == 'overview' }}">Overview</a>
+        {% for s in report.statements.statements %}
+          <a href="{{ url_for('owner', slug=s.slug, month=month_param) }}"
+             class="{{ 'active' if page == 'owners' and s.slug == request.view_args.get('slug') }}">{{ s.owner_name }}</a>
+        {% endfor %}
+        <a href="{{ url_for('reconciliation', month=month_param) }}" class="{{ 'active' if page == 'recon' }}">
+          Reconciliation
+          {% if report.reconciliation.action_items %}<span class="badge">{{ report.reconciliation.action_items|length }}</span>{% endif %}
+        </a>
+      </nav>
+      <form class="month-picker" method="get">
+        <input type="month" name="month" value="{{ month_param }}" onchange="this.form.submit()">
+      </form>
+    </div>
+  </header>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="wrap footer">Synthetic data · numbers calculated with exact decimal math, rounded to the cent</footer>
+</body>
+</html>

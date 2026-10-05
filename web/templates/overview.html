@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+{% set run = report.statements %}
+{% set r = report.reconciliation %}
+
+<h1>{{ report.period }} at a glance</h1>
+
+<section class="cards">
+  <div class="card">
+    <div class="label">Owed to owners</div>
+    <div class="value">{{ run.grand_total_earned|money }}</div>
+    <div class="sub">{{ run.statements|length }} owners · {{ run.statements|map(attribute='lines')|map('length')|sum }} reservations</div>
+  </div>
+  <div class="card">
+    <div class="label">Payable now</div>
+    <div class="value good">{{ run.grand_total_payable|money }}</div>
+    <div class="sub">{{ run.grand_total_held|money }} held until the money arrives</div>
+  </div>
+  <div class="card">
+    <div class="label">Bank deposits</div>
+    <div class="value">{{ r.total_deposits|money }}</div>
+    <div class="sub">{{ r.total_matched|money }} matched · {{ (r.total_deposits - r.total_matched)|money }} unmatched</div>
+  </div>
+  <a class="card link {{ 'warn' if r.action_items }}" href="{{ url_for('reconciliation', month=month_param) }}">
+    <div class="label">Needs attention</div>
+    <div class="value">{{ r.action_items|length }}</div>
+    <div class="sub">reconciliation exceptions →</div>
+  </a>
+</section>
+
+<h2>Owner payouts</h2>
+<table>
+  <thead>
+    <tr><th>Owner</th><th>Listings</th><th class="num">Earned</th><th class="num">Held</th><th class="num">Payable now</th></tr>
+  </thead>
+  <tbody>
+  {% for s in run.statements %}
+    <tr>
+      <td><a href="{{ url_for('owner', slug=s.slug, month=month_param) }}">{{ s.owner_name }}</a><div class="muted">{{ s.owner_email }}</div></td>
+      <td>{% for l in s.listings %}{{ l.listing_name }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+      <td class="num">{{ s.total_earned|money }}</td>
+      <td class="num {{ 'warn-text' if s.total_held }}">{{ s.total_held|money }}</td>
+      <td class="num strong">{{ s.total_payable|money }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr><td colspan="2">Total</td>
+      <td class="num">{{ run.grand_total_earned|money }}</td>
+      <td class="num">{{ run.grand_total_held|money }}</td>
+      <td class="num">{{ run.grand_total_payable|money }}</td></tr>
+  </tfoot>
+</table>
+
+{% if run.excluded %}
+<h2>Left off the statements</h2>
+<table>
+  <thead><tr><th>Reservation</th><th>Listing</th><th>Check-in</th><th>Why</th></tr></thead>
+  <tbody>
+  {% for e in run.excluded %}
+    <tr><td>{{ e.reservation.reservation_id }}</td><td>{{ e.reservation.listing_name }}</td>
+        <td>{{ e.reservation.check_in }}</td><td>{{ e.reason }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
