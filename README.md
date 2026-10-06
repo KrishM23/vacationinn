@@ -7,6 +7,8 @@ Takes the three CSV exports (reservations, owner agreements, bank deposits) and 
 
 You can run it as a **CLI** (prints everything + writes CSVs) or a small **web UI** (Flask).
 
+For a plain-English walkthrough of how I approached it and what I found, see [docs/THOUGHT_PROCESS.md](docs/THOUGHT_PROCESS.md).
+
 ![Overview](docs/overview.png)
 
 ---
